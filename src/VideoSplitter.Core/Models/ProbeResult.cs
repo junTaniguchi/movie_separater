@@ -1,3 +1,5 @@
+using System;
+
 namespace VideoSplitter.Core.Models;
 
 public sealed record ProbeResult(double DurationSeconds, double FileSizeBytes, double BitRateBitsPerSecond)
