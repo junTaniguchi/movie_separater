@@ -1,0 +1,2 @@
+"""VideoSplitter application package."""
+

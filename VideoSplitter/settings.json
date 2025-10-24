@@ -1,0 +1,7 @@
+{
+  "input_path": "",
+  "output_dir": "split",
+  "max_size_gb": 1.5,
+  "max_duration_minutes": 50
+}
+

@@ -1,0 +1,2 @@
+This is a placeholder. Replace with the official FFmpeg license text that matches the bundled binaries.
+
