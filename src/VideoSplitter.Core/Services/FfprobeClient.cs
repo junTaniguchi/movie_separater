@@ -58,9 +58,9 @@ public sealed class FfprobeClient
         var bitRate = formatElement.GetPropertyOrDefault("bit_rate", 0d);
 
         return new ProbeResult(
-            durationSeconds: duration,
-            fileSizeBytes: size,
-            bitRateBitsPerSecond: bitRate);
+            DurationSeconds: duration,
+            FileSizeBytes: size,
+            BitRateBitsPerSecond: bitRate);
     }
 }
 

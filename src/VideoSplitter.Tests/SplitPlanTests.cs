@@ -8,7 +8,7 @@ public class SplitPlanTests
     [Fact]
     public void CalculatesPartCountBasedOnSize()
     {
-        var probe = new ProbeResult(durationSeconds: 1200, fileSizeBytes: 4L * 1024 * 1024 * 1024, bitRateBitsPerSecond: 0);
+        var probe = new ProbeResult(DurationSeconds: 1200, FileSizeBytes: 4L * 1024 * 1024 * 1024, BitRateBitsPerSecond: 0);
 
         var plan = SplitPlan.FromProbe(probe, maxGigabytes: 1.5, maxMinutes: 50);
 
@@ -19,7 +19,7 @@ public class SplitPlanTests
     [Fact]
     public void CalculatesPartCountBasedOnDuration()
     {
-        var probe = new ProbeResult(durationSeconds: 4 * 3600, fileSizeBytes: 500L * 1024 * 1024, bitRateBitsPerSecond: 0);
+        var probe = new ProbeResult(DurationSeconds: 4 * 3600, FileSizeBytes: 500L * 1024 * 1024, BitRateBitsPerSecond: 0);
 
         var plan = SplitPlan.FromProbe(probe, maxGigabytes: 10, maxMinutes: 50);
 
@@ -30,7 +30,7 @@ public class SplitPlanTests
     [Fact]
     public void MinimumPartCountIsOne()
     {
-        var probe = new ProbeResult(durationSeconds: 30, fileSizeBytes: 100 * 1024 * 1024, bitRateBitsPerSecond: 0);
+        var probe = new ProbeResult(DurationSeconds: 30, FileSizeBytes: 100 * 1024 * 1024, BitRateBitsPerSecond: 0);
 
         var plan = SplitPlan.FromProbe(probe, maxGigabytes: 10, maxMinutes: 60);
 
