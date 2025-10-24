@@ -12,6 +12,10 @@ using VideoSplitter.App.ViewModels;
 using VideoSplitter.Core.Models;
 using VideoSplitter.Core.Services;
 using WinForms = System.Windows.Forms;
+using WpfDataFormats = System.Windows.DataFormats;
+using WpfDragDropEffects = System.Windows.DragDropEffects;
+using WpfDragEventArgs = System.Windows.DragEventArgs;
+using WpfIDataObject = System.Windows.IDataObject;
 
 namespace VideoSplitter.App.Views;
 
@@ -150,43 +154,43 @@ public partial class MainWindow : Window
         await _viewModel.OpenOutputFolderAsync();
     }
 
-    private void Window_DragOver(object sender, DragEventArgs e)
+    private void Window_DragOver(object sender, WpfDragEventArgs e)
     {
         if (HasMp4File(e.Data))
         {
-            e.Effects = DragDropEffects.Copy;
+            e.Effects = WpfDragDropEffects.Copy;
         }
         else
         {
-            e.Effects = DragDropEffects.None;
+            e.Effects = WpfDragDropEffects.None;
         }
         e.Handled = true;
     }
 
-    private void Window_Drop(object sender, DragEventArgs e)
+    private void Window_Drop(object sender, WpfDragEventArgs e)
     {
         if (HasMp4File(e.Data))
         {
-            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            var files = (string[])e.Data.GetData(WpfDataFormats.FileDrop);
             _viewModel.InputFilePath = files.FirstOrDefault();
         }
     }
 
-    private void InputTextBox_PreviewDragOver(object sender, DragEventArgs e)
+    private void InputTextBox_PreviewDragOver(object sender, WpfDragEventArgs e)
     {
         Window_DragOver(sender, e);
     }
 
-    private void InputTextBox_PreviewDrop(object sender, DragEventArgs e)
+    private void InputTextBox_PreviewDrop(object sender, WpfDragEventArgs e)
     {
         Window_Drop(sender, e);
     }
 
-    private static bool HasMp4File(IDataObject data)
+    private static bool HasMp4File(WpfIDataObject data)
     {
-        if (data.GetDataPresent(DataFormats.FileDrop))
+        if (data.GetDataPresent(WpfDataFormats.FileDrop))
         {
-            var files = (string[])data.GetData(DataFormats.FileDrop);
+            var files = (string[])data.GetData(WpfDataFormats.FileDrop);
             return files.Length > 0 && files[0].EndsWith(".mp4", StringComparison.OrdinalIgnoreCase);
         }
 
