@@ -1,0 +1,33 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoSplitter.App", "src/VideoSplitter.App/VideoSplitter.App.csproj", "{C4D60C63-7C8B-4D4F-9C04-6E8EBD4BF13C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoSplitter.Core", "src/VideoSplitter.Core/VideoSplitter.Core.csproj", "{4E8A6594-02ED-4F71-98E8-3F607F2BFCC2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoSplitter.Tests", "src/VideoSplitter.Tests/VideoSplitter.Tests.csproj", "{B4A361C6-DC9A-4F44-87F1-3BD8B2F789C7}"
+EndProject
+Global
+GlobalSection(SolutionConfigurationPlatforms) = preSolution
+Debug|Any CPU = Debug|Any CPU
+Release|Any CPU = Release|Any CPU
+EndGlobalSection
+GlobalSection(ProjectConfigurationPlatforms) = postSolution
+{C4D60C63-7C8B-4D4F-9C04-6E8EBD4BF13C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+{C4D60C63-7C8B-4D4F-9C04-6E8EBD4BF13C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{C4D60C63-7C8B-4D4F-9C04-6E8EBD4BF13C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+{C4D60C63-7C8B-4D4F-9C04-6E8EBD4BF13C}.Release|Any CPU.Build.0 = Release|Any CPU
+{4E8A6594-02ED-4F71-98E8-3F607F2BFCC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+{4E8A6594-02ED-4F71-98E8-3F607F2BFCC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{4E8A6594-02ED-4F71-98E8-3F607F2BFCC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+{4E8A6594-02ED-4F71-98E8-3F607F2BFCC2}.Release|Any CPU.Build.0 = Release|Any CPU
+{B4A361C6-DC9A-4F44-87F1-3BD8B2F789C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+{B4A361C6-DC9A-4F44-87F1-3BD8B2F789C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{B4A361C6-DC9A-4F44-87F1-3BD8B2F789C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+{B4A361C6-DC9A-4F44-87F1-3BD8B2F789C7}.Release|Any CPU.Build.0 = Release|Any CPU
+EndGlobalSection
+GlobalSection(SolutionProperties) = preSolution
+HideSolutionNode = FALSE
+EndGlobalSection
+EndGlobal
