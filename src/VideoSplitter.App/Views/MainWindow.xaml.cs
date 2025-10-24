@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.Win32;
 using VideoSplitter.App.ViewModels;
 using VideoSplitter.Core.Models;
 using VideoSplitter.Core.Services;
@@ -16,6 +15,11 @@ using WpfDataFormats = System.Windows.DataFormats;
 using WpfDragDropEffects = System.Windows.DragDropEffects;
 using WpfDragEventArgs = System.Windows.DragEventArgs;
 using WpfIDataObject = System.Windows.IDataObject;
+using WpfMessageBox = System.Windows.MessageBox;
+using WpfMessageBoxButton = System.Windows.MessageBoxButton;
+using WpfMessageBoxImage = System.Windows.MessageBoxImage;
+using WpfMessageBoxResult = System.Windows.MessageBoxResult;
+using WpfOpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace VideoSplitter.App.Views;
 
@@ -75,8 +79,8 @@ public partial class MainWindow : Window
         }
 
         var message = "以下のファイルが既に存在します。上書きしますか？\n" + string.Join("\n", existing.Select(Path.GetFileName));
-        var result = MessageBox.Show(this, message, "上書き確認", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-        return await Task.FromResult(result == MessageBoxResult.Yes);
+        var result = WpfMessageBox.Show(this, message, "上書き確認", WpfMessageBoxButton.YesNo, WpfMessageBoxImage.Question, WpfMessageBoxResult.No);
+        return await Task.FromResult(result == WpfMessageBoxResult.Yes);
     }
 
     private Task OpenFolderAsync(string path)
@@ -97,7 +101,7 @@ public partial class MainWindow : Window
 
     private void BrowseInput_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog
+        var dialog = new WpfOpenFileDialog
         {
             Filter = "MP4 ファイル (*.mp4)|*.mp4|すべてのファイル (*.*)|*.*",
             CheckFileExists = true,
