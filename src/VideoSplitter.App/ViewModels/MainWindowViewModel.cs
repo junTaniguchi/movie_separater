@@ -1,9 +1,11 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using VideoSplitter.Core.Logging;
 using VideoSplitter.Core.Models;
 using VideoSplitter.Core.Services;

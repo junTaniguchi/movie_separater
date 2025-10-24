@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace VideoSplitter.Core.Models;
 
 public sealed record SplitPlan(int PartCount, double SegmentLengthSeconds, double MaximumSizeBytes)
