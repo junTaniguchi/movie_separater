@@ -26,6 +26,7 @@ $pyInstallerArgs = @(
     "--windowed",
     "--icon", $iconPath,
     "--name", "VideoSplitter",
+    "--paths", (Join-Path $projectRoot "src"),
     "--add-binary", (Join-Path $ffmpegDir "ffmpeg.exe") + ";.",
     "--add-binary", (Join-Path $ffmpegDir "ffprobe.exe") + ";.",
     $srcMain
@@ -33,4 +34,3 @@ $pyInstallerArgs = @(
 
 Write-Host "PyInstaller を実行します..."
 & $Python -m PyInstaller @pyInstallerArgs
-

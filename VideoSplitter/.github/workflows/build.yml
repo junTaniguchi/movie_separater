@@ -51,7 +51,7 @@ jobs:
           }
 
       - name: Run PyInstaller
-        run: pyinstaller --onefile --windowed --icon assets/icon.ico --name VideoSplitter --add-binary "third_party\ffmpeg\win-x64\ffmpeg.exe;." --add-binary "third_party\ffmpeg\win-x64\ffprobe.exe;." src/app.py
+        run: pyinstaller --onefile --windowed --icon assets/icon.ico --name VideoSplitter --paths src --add-binary "third_party\ffmpeg\win-x64\ffmpeg.exe;." --add-binary "third_party\ffmpeg\win-x64\ffprobe.exe;." src/app.py
 
       - name: Prepare artifact
         shell: pwsh
@@ -68,4 +68,3 @@ jobs:
         with:
           name: VideoSplitter-win64
           path: VideoSplitter/dist/VideoSplitter-win64.zip
-

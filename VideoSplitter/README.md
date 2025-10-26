@@ -1,6 +1,6 @@
 # VideoSplitter (Python / Tkinter)
 
-Windows 向けの MP4 自動分割ツールです。FFmpeg を同梱し、PyInstaller で単一 EXE として配布できるように設計しています。
+Windows / macOS 向けの MP4 自動分割ツールです。FFmpeg を同梱し、PyInstaller で単一バイナリとして配布できるように設計しています。
 
 ## 主な機能
 
@@ -14,17 +14,16 @@ Windows 向けの MP4 自動分割ツールです。FFmpeg を同梱し、PyInst
 ## 前提条件
 
 - Python 3.11 (開発時)
-- Windows 10 / 11 での実行を想定
-- FFmpeg 公式配布バイナリ (win-x64) を以下へ配置  
-  `third_party/ffmpeg/win-x64/ffmpeg.exe`  
-  `third_party/ffmpeg/win-x64/ffprobe.exe`  
-  `third_party/ffmpeg/win-x64/LICENSE.txt`
-  （GitHub Actions ビルドでは自動ダウンロードされます）
+- Windows 10 / 11 または macOS 13+ での実行を想定
+- FFmpeg 公式配布バイナリを以下へ配置  
+  - Windows: `third_party/ffmpeg/win-x64/{ffmpeg.exe, ffprobe.exe, LICENSE.txt}`  
+  - macOS: `third_party/ffmpeg/mac-universal/{ffmpeg, ffprobe, LICENSE.txt}`  
+  （GitHub Actions ビルドでは Windows 版を自動ダウンロードします）
 
 ## セットアップ
 
-1. `third_party/ffmpeg/win-x64/` に FFmpeg バイナリ一式を配置します。  
-   (例: https://github.com/BtbN/FFmpeg-Builds など公式配布サイト)
+1. `third_party/ffmpeg/<platform>/` に FFmpeg バイナリ一式を配置します。  
+   (例: Windows は https://github.com/BtbN/FFmpeg-Builds, macOS は Homebrew や https://evermeet.cx/ffmpeg/ など)
 2. `VideoSplitter/src` を PYTHONPATH に追加するか、プロジェクトルートで `python -m src.app` を起動できます。
 
 ```powershell
@@ -53,9 +52,11 @@ cd VideoSplitter/tests
 .\generate_samples.ps1 -FfmpegPath ..\third_party\ffmpeg\win-x64\ffmpeg.exe
 ```
 
-## ビルド (GitHub Actions 推奨)
+## ビルド
 
-ローカル環境で PowerShell が利用できない場合でも、GitHub Actions のワークフローでビルドが行えます。
+### GitHub Actions (Windows)
+
+ローカルに PowerShell / PyInstaller 環境が無い場合は GitHub Actions のワークフローで Windows 向けビルドを行えます。
 
 1. リポジトリを GitHub 上に配置し、`main` ブランチへプッシュします。  
    （手動で実行する場合は Actions タブから `build` ワークフローを `Run workflow` できます）
@@ -65,8 +66,16 @@ cd VideoSplitter/tests
 
 > 備考: `build/build.ps1` や `build/video_splitter.spec` はローカルで PowerShell が利用できる環境向けに残していますが、GitHub Actions の利用が前提です。
 
+### ローカルビルド (macOS)
+
+1. `python3 -m pip install --upgrade pyinstaller` で PyInstaller をインストールします。
+2. `third_party/ffmpeg/mac-universal/` に macOS 版の `ffmpeg`, `ffprobe`, `LICENSE.txt` を配置します。
+3. `VideoSplitter` ディレクトリで `bash build/build_macos.sh` を実行します。
+
+`dist/VideoSplitter-macos.zip` が生成され、macOS 用のバイナリと FFmpeg LICENSE、README がまとめて出力されます。
+
 ## 配布・ライセンス
 
-- EXE と同じフォルダに `ffmpeg.exe`, `ffprobe.exe`, `LICENSE.txt` が含まれるようにしてください (PyInstaller onefile が一時展開するため自動同梱されます)。
-- FFmpeg は LGPL/GPL ライセンスです。配布物には必ず `third_party/ffmpeg/win-x64/LICENSE.txt` を同梱し、出典・バージョンを記載してください。
+- 配布物と同じフォルダに `ffmpeg` / `ffprobe` / `LICENSE.txt` (プラットフォームに応じた拡張子付き) が含まれるようにしてください。PyInstaller onefile 実行時は自動で一時展開されます。
+- FFmpeg は LGPL/GPL ライセンスです。配布物には必ず使用したビルドの `LICENSE.txt` を同梱し、出典・バージョンを記載してください。
 - 商用配布時は法務確認を実施し、SmartScreen 対策としてコード署名を推奨します。

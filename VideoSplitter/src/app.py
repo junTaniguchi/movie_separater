@@ -13,6 +13,11 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
+# Ensure sibling modules stay importable when frozen or run as a package
+CURRENT_DIR = Path(__file__).resolve().parent
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
+
 from core.ffmpeg_locator import get_ffmpeg_paths
 from core.ffprobe import probe
 from core.logging_setup import setup_logging

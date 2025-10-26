@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import sys
 from pathlib import Path
@@ -18,15 +19,41 @@ def _candidate_directories() -> Iterable[Path]:
         yield Path(__file__).resolve().parents[2]
 
     yield Path.cwd()
-    yield Path(__file__).resolve().parents[2] / "third_party" / "ffmpeg" / "win-x64"
+
+    platform_dir = _platform_ffmpeg_dir()
+    if platform_dir:
+        yield platform_dir
+
+
+def _platform_ffmpeg_dir() -> Path | None:
+    platform_subdir = {
+        "Windows": "win-x64",
+        "Darwin": "mac-universal",
+        "Linux": "linux-x64",
+    }.get(platform.system())
+    if not platform_subdir:
+        return None
+    return (
+        Path(__file__).resolve().parents[2]
+        / "third_party"
+        / "ffmpeg"
+        / platform_subdir
+    )
+
+
+def _binary_names() -> Tuple[str, str]:
+    if os.name == "nt":
+        return "ffmpeg.exe", "ffprobe.exe"
+    return "ffmpeg", "ffprobe"
 
 
 def get_ffmpeg_paths() -> Tuple[Path, Path]:
     """Locate ffmpeg and ffprobe binaries."""
+    ffmpeg_name, ffprobe_name = _binary_names()
     candidates = []
     for base_dir in _candidate_directories():
-        ffmpeg_path = base_dir / "ffmpeg.exe"
-        ffprobe_path = base_dir / "ffprobe.exe"
+        ffmpeg_path = base_dir / ffmpeg_name
+        ffprobe_path = base_dir / ffprobe_name
         if ffmpeg_path.exists() and ffprobe_path.exists():
             return ffmpeg_path.resolve(), ffprobe_path.resolve()
         candidates.append((ffmpeg_path, ffprobe_path))
@@ -40,9 +67,8 @@ def get_ffmpeg_paths() -> Tuple[Path, Path]:
         f"- {ffmpeg.parent}" for ffmpeg, _ in candidates
     )
     raise FileNotFoundError(
-        "ffmpeg.exe and ffprobe.exe could not be located. "
+        f"{ffmpeg_name} and {ffprobe_name} could not be located. "
         "Ensure the binaries are bundled with the application or "
         "available on PATH. Searched:\n"
         f"{search_details}"
     )
-
