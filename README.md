@@ -67,3 +67,26 @@ pwsh .\build\publish.ps1 -Configuration Release -Runtime win-x64
 - **ファイル書き込みエラー**: 出力フォルダーの書き込み権限や空き容量を確認してください。
 - **長いパスで失敗する**: Windows のパス長制限が原因の場合があります。短いパスに移動して実行してください。
 - **キャンセルが効かない**: 数秒遅れて停止します。停止しない場合はアプリを終了してください。
+
+## Python / Tkinter 版 (Windows / macOS)
+
+WPF 版とは別に、`VideoSplitter/` ディレクトリ以下に Python / Tkinter 版の GUI があります。こちらは PyInstaller でスタンドアロン バイナリを作成でき、Windows と macOS の両方に対応しています。詳細は `VideoSplitter/README.md` を参照してください。ここでは macOS 向けビルド手順のみ抜粋します。
+
+### macOS ワンファイルビルド
+
+1. macOS 用の FFmpeg バイナリ (`ffmpeg`, `ffprobe`, `LICENSE.txt`) を入手し、`VideoSplitter/third_party/ffmpeg/mac-universal/` に配置します。Homebrew (`brew install ffmpeg`) や [https://evermeet.cx/ffmpeg/](https://evermeet.cx/ffmpeg/) などの配布サイトを利用できます。
+2. PyInstaller をインストールします。
+
+   ```bash
+   cd VideoSplitter
+   python3 -m pip install --upgrade pyinstaller
+   ```
+
+3. ワンファイル パッケージを生成します。
+
+   ```bash
+   cd VideoSplitter
+   bash build/build_macos.sh
+   ```
+
+`dist/VideoSplitter-macos.zip` が作成され、中に macOS 実行ファイル (`VideoSplitter`)、README、FFmpeg ライセンスが含まれます。配布時は notarize / Gatekeeper 対応のために署名・公証を行うことを推奨します。
