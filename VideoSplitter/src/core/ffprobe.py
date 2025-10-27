@@ -44,8 +44,17 @@ def probe(input_path: Path) -> Dict[str, Any]:
         str(input_path),
     ]
 
-    output = run_command(cmd, logger, capture_output=True, stream_level=logging.DEBUG)
-    assert output is not None
+    output = run_command(
+        cmd,
+        logger,
+        capture_output=True,
+        stream_level=logging.DEBUG,
+        text_encoding="utf-8",
+    )
+    if not output:
+        raise RuntimeError(
+            "ffprobe returned no metadata. Ensure ffprobe.exe can run on this system."
+        )
 
     try:
         info = json.loads(output)
@@ -82,4 +91,3 @@ def probe(input_path: Path) -> Dict[str, Any]:
         bit_rate,
     )
     return result
-

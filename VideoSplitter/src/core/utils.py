@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import locale
 import logging
 import os
 import shlex
@@ -102,6 +103,7 @@ def run_command(
     cancel_event: Optional[threading.Event] = None,
     cwd: Optional[Path] = None,
     stream_level: int = logging.INFO,
+    text_encoding: Optional[str] = None,
 ) -> Optional[str]:
     """
     Execute a subprocess command.
@@ -117,19 +119,31 @@ def run_command(
         completed = subprocess.run(
             args,
             check=False,
-            text=True,
             capture_output=True,
             cwd=str(cwd) if cwd else None,
         )
-        if completed.stdout:
-            for line in completed.stdout.splitlines():
+        encoding = text_encoding or locale.getpreferredencoding(False)
+        stdout_bytes = completed.stdout or b""
+        stderr_bytes = completed.stderr or b""
+        try:
+            stdout_text = stdout_bytes.decode(
+                encoding, errors="strict" if text_encoding else "replace"
+            )
+        except UnicodeDecodeError as exc:
+            raise RuntimeError(
+                f"Failed to decode stdout from command: {format_command(args)}"
+            ) from exc
+        stderr_text = stderr_bytes.decode(encoding, errors="replace")
+
+        if stdout_text:
+            for line in stdout_text.splitlines():
                 logger.log(stream_level, line)
-        if completed.stderr:
-            for line in completed.stderr.splitlines():
+        if stderr_text:
+            for line in stderr_text.splitlines():
                 logger.error(line)
         if completed.returncode != 0:
             raise subprocess.CalledProcessError(completed.returncode, args)
-        return completed.stdout
+        return stdout_text
 
     with subprocess.Popen(
         args,
