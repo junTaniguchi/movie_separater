@@ -59,6 +59,8 @@ jobs:
           $packageDir = "dist\VideoSplitter_package"
           New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
           Copy-Item -Path "dist\VideoSplitter.exe" -Destination $packageDir -Force
+          Copy-Item -Path "third_party\ffmpeg\win-x64\ffmpeg.exe" -Destination (Join-Path $packageDir "ffmpeg.exe") -Force
+          Copy-Item -Path "third_party\ffmpeg\win-x64\ffprobe.exe" -Destination (Join-Path $packageDir "ffprobe.exe") -Force
           Copy-Item -Path "third_party\ffmpeg\win-x64\LICENSE.txt" -Destination (Join-Path $packageDir "FFmpeg_LICENSE.txt") -Force
           Copy-Item -Path "README.md" -Destination (Join-Path $packageDir "README.txt") -Force
           Compress-Archive -Path "$packageDir\*" -DestinationPath "dist\VideoSplitter-win64.zip" -Force
