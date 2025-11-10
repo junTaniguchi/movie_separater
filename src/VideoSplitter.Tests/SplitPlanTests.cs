@@ -37,4 +37,16 @@ public class SplitPlanTests
         Assert.Equal(1, plan.PartCount);
         Assert.Equal(30, plan.SegmentLengthSeconds);
     }
+
+    [Theory]
+    [InlineData(1, "sample", ".mp4", "sample_00.mp4")]
+    [InlineData(2, "movie", "mp4", "movie_01.mp4")]
+    public void SplitPartGeneratesExpectedFileNames(int index, string baseName, string extension, string expected)
+    {
+        var part = new SplitPart(index, NominalDurationSeconds: 0);
+
+        var actual = part.GetFileName(baseName, extension);
+
+        Assert.Equal(expected, actual);
+    }
 }
