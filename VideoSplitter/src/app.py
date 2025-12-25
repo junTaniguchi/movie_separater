@@ -13,6 +13,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
+SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac", ".aac", ".ogg", ".wma"}
+
 # Ensure sibling modules stay importable when frozen or run as a package
 CURRENT_DIR = Path(__file__).resolve().parent
 if str(CURRENT_DIR) not in sys.path:
@@ -22,7 +24,7 @@ from core.ffmpeg_locator import get_ffmpeg_paths
 from core.ffprobe import probe
 from core.logging_setup import setup_logging
 from core.split_plan import make_plan
-from core.splitter import copy_split, reencode_oversize
+from core.splitter import copy_split, extract_audio, reencode_oversize, split_audio_file
 from core import utils
 
 
@@ -132,6 +134,14 @@ class VideoSplitterApp(tk.Tk):
             controls_frame, text="開始", command=self._on_start
         )
         self.start_button.pack(side=tk.LEFT, padx=5)
+        self.audio_button = ttk.Button(
+            controls_frame, text="音声へ変換", command=self._on_extract_audio
+        )
+        self.audio_button.pack(side=tk.LEFT, padx=5)
+        self.audio_split_button = ttk.Button(
+            controls_frame, text="音声分割", command=self._on_split_audio
+        )
+        self.audio_split_button.pack(side=tk.LEFT, padx=5)
         self.cancel_button = ttk.Button(
             controls_frame, text="キャンセル", command=self._on_cancel, state=tk.DISABLED
         )
@@ -162,7 +172,12 @@ class VideoSplitterApp(tk.Tk):
     def _choose_input(self) -> None:
         file_path = filedialog.askopenfilename(
             title="MP4ファイルを選択",
-            filetypes=[("MP4 Files", "*.mp4")],
+            filetypes=[
+                ("動画/音声ファイル", "*.mp4 *.mkv *.mov *.mp3 *.wav *.m4a *.flac *.aac *.ogg *.wma"),
+                ("MP4 Files", "*.mp4"),
+                ("音声ファイル", "*.mp3 *.wav *.m4a *.flac *.aac *.ogg *.wma"),
+                ("All Files", "*.*"),
+            ],
         )
         if file_path:
             self.input_path_var.set(file_path)
@@ -208,11 +223,12 @@ class VideoSplitterApp(tk.Tk):
 
         utils.ensure_directory(output_dir)
 
-        existing_parts = list(output_dir.glob("part_*.mp4"))
+        base_name = input_path.stem
+        existing_parts = list(output_dir.glob(f"{base_name}_part_*.mp4"))
         if existing_parts:
             if not messagebox.askyesno(
                 "確認",
-                f"出力フォルダに既存のpart_*.mp4が{len(existing_parts)}件存在します。上書きしますか？",
+                f"出力フォルダに既存の{base_name}_part_*.mp4が{len(existing_parts)}件存在します。上書きしますか？",
             ):
                 return
             for part in existing_parts:
@@ -237,6 +253,120 @@ class VideoSplitterApp(tk.Tk):
 
         self.worker_thread = threading.Thread(
             target=self._run_processing,
+            args=(input_path, output_dir, max_size, max_duration),
+            daemon=True,
+        )
+        self.worker_thread.start()
+
+    def _on_extract_audio(self) -> None:
+        if self.is_running:
+            return
+
+        try:
+            input_path = Path(self.input_path_var.get()).expanduser().resolve()
+        except Exception:
+            messagebox.showerror("エラー", "入力ファイルのパスが不正です。")
+            return
+
+        if not input_path.exists() or not input_path.is_file():
+            messagebox.showerror("エラー", "有効な動画ファイルを選択してください。")
+            return
+
+        try:
+            output_dir = Path(self.output_dir_var.get()).expanduser().resolve()
+        except Exception:
+            messagebox.showerror("エラー", "出力フォルダのパスが不正です。")
+            return
+
+        utils.ensure_directory(output_dir)
+        audio_path = output_dir / f"{input_path.stem}.mp3"
+
+        if audio_path.exists():
+            if not messagebox.askyesno(
+                "上書き確認",
+                f"{audio_path.name} が既に存在します。上書きしますか？",
+            ):
+                return
+            audio_path.unlink(missing_ok=True)
+
+        self.status_var.set("音声変換を準備中...")
+        self.progress_label_var.set("進捗: 0 / 1")
+        self.progress_var.set(0.0)
+        self.progress_total = 1
+        self._set_running(True)
+        self.cancel_event.clear()
+
+        self._persist_settings_with_defaults(input_path, output_dir)
+
+        self.worker_thread = threading.Thread(
+            target=self._run_audio_conversion,
+            args=(input_path, output_dir, audio_path),
+            daemon=True,
+        )
+        self.worker_thread.start()
+
+    def _on_split_audio(self) -> None:
+        if self.is_running:
+            return
+
+        try:
+            input_path = Path(self.input_path_var.get()).expanduser().resolve()
+        except Exception:
+            messagebox.showerror("エラー", "入力ファイルのパスが不正です。")
+            return
+
+        if not input_path.exists() or not input_path.is_file():
+            messagebox.showerror("エラー", "有効な音声ファイルを選択してください。")
+            return
+
+        suffix = input_path.suffix.lower()
+        if suffix not in SUPPORTED_AUDIO_EXTENSIONS:
+            messagebox.showerror(
+                "エラー",
+                "対応している音声ファイルを選択してください。\n対応拡張子: "
+                + ", ".join(sorted(SUPPORTED_AUDIO_EXTENSIONS)),
+            )
+            return
+
+        try:
+            output_dir = Path(self.output_dir_var.get()).expanduser().resolve()
+        except Exception:
+            messagebox.showerror("エラー", "出力フォルダのパスが不正です。")
+            return
+
+        max_size = self._safe_float(self.max_size_var.get(), 1.5)
+        max_duration = self._safe_float(self.max_duration_var.get(), 50.0)
+        if max_size <= 0 or max_duration <= 0:
+            messagebox.showerror("エラー", "最大サイズと最大時間は0より大きい値を指定してください。")
+            return
+
+        utils.ensure_directory(output_dir)
+
+        base_name = input_path.stem
+        existing_parts = list(output_dir.glob(f"{base_name}_part_*{suffix}"))
+        if existing_parts:
+            if not messagebox.askyesno(
+                "確認",
+                f"出力フォルダに既存の{base_name}_part_*{suffix}が{len(existing_parts)}件存在します。上書きしますか？",
+            ):
+                return
+            for part in existing_parts:
+                try:
+                    part.unlink()
+                except OSError:
+                    pass
+
+        self.status_var.set("音声分割を準備中...")
+        self.progress_label_var.set("進捗: 0 / 0")
+        self.progress_var.set(0.0)
+        self.progress_total = 0
+        self._set_running(True)
+        self.cancel_event.clear()
+
+        self._persist_settings_with_defaults(input_path, output_dir)
+
+        self.worker_thread = threading.Thread(
+            target=self._run_audio_split,
             args=(input_path, output_dir, max_size, max_duration),
             daemon=True,
         )
@@ -337,6 +467,104 @@ class VideoSplitterApp(tk.Tk):
         finally:
             self.event_queue.put({"type": "done"})
 
+    def _run_audio_conversion(
+        self, input_path: Path, output_dir: Path, output_file: Path
+    ) -> None:
+        try:
+            ffmpeg_path, ffprobe_path = get_ffmpeg_paths()
+            self.logger.info("Using ffmpeg at %s", ffmpeg_path)
+            self.logger.info("Using ffprobe at %s", ffprobe_path)
+
+            self.event_queue.put({"type": "status", "message": "音声変換を実行中..."})
+            self.event_queue.put({"type": "progress_reset", "total": 1})
+
+            result = extract_audio(
+                input_path,
+                output_file,
+                ffmpeg_path,
+                self.logger,
+                cancel_event=self.cancel_event,
+            )
+
+            if self.cancel_event.is_set():
+                self.event_queue.put({"type": "cancelled"})
+            else:
+                self.event_queue.put({"type": "progress", "current": 1, "total": 1})
+                self.event_queue.put(
+                    {
+                        "type": "audio_completed",
+                        "file": str(result),
+                        "output_dir": str(output_dir),
+                    }
+                )
+        except utils.OperationCancelled:
+            self.event_queue.put({"type": "cancelled"})
+        except Exception as exc:
+            self.logger.exception("An error occurred during audio conversion: %s", exc)
+            self.event_queue.put({"type": "error", "message": str(exc)})
+        finally:
+            self.event_queue.put({"type": "done"})
+
+    def _run_audio_split(
+        self, input_path: Path, output_dir: Path, max_size: float, max_duration: float
+    ) -> None:
+        try:
+            ffmpeg_path, ffprobe_path = get_ffmpeg_paths()
+            self.logger.info("Using ffmpeg at %s", ffmpeg_path)
+            self.logger.info("Using ffprobe at %s", ffprobe_path)
+
+            metadata = probe(input_path)
+            duration = metadata.get("duration", 0.0)
+            size_bytes = metadata.get("size_bytes", 0)
+            bitrate = metadata.get("bit_rate", 0)
+            self.logger.info(
+                "Input audio duration=%.2f秒 size=%s bitrate=%s bps",
+                duration,
+                utils.human_readable_size(size_bytes),
+                bitrate,
+            )
+
+            plan = make_plan(duration, size_bytes, max_size, max_duration)
+            parts = int(plan["parts"])
+            segment_time = plan["segment_time"]
+            self.logger.info("Audio split plan: %d part(s), segment %.2f 秒.", parts, segment_time)
+
+            self.event_queue.put(
+                {"type": "status", "message": f"音声分割中... 全{parts}パート想定"}
+            )
+            self.event_queue.put({"type": "progress_reset", "total": parts})
+
+            part_files = split_audio_file(
+                input_path,
+                output_dir,
+                segment_time,
+                ffmpeg_path,
+                self.logger,
+                cancel_event=self.cancel_event,
+            )
+
+            total_parts = len(part_files)
+            for idx in range(total_parts):
+                self.event_queue.put({"type": "progress", "current": idx + 1, "total": total_parts})
+
+            if self.cancel_event.is_set():
+                self.event_queue.put({"type": "cancelled"})
+            else:
+                self.event_queue.put(
+                    {
+                        "type": "audio_split_completed",
+                        "files": [str(path) for path in part_files],
+                        "output_dir": str(output_dir),
+                    }
+                )
+        except utils.OperationCancelled:
+            self.event_queue.put({"type": "cancelled"})
+        except Exception as exc:
+            self.logger.exception("An error occurred during audio splitting: %s", exc)
+            self.event_queue.put({"type": "error", "message": str(exc)})
+        finally:
+            self.event_queue.put({"type": "done"})
+
     # Queue polling -------------------------------------------------------
     def _poll_log_queue(self) -> None:
         while True:
@@ -379,6 +607,29 @@ class VideoSplitterApp(tk.Tk):
                 f"進捗: {self.progress_total} / {self.progress_total}"
             )
             self._show_completion_dialog(event["files"], event["output_dir"])
+        elif event_type == "audio_completed":
+            self.status_var.set("完了")
+            self.progress_var.set(100.0)
+            self.progress_label_var.set("進捗: 1 / 1")
+            output_file = event.get("file")
+            output_dir = event.get("output_dir", "")
+            if output_file:
+                name = Path(output_file).name
+                if messagebox.askyesno(
+                    "音声変換完了",
+                    f"音声ファイルを出力しました:\n{name}\nフォルダを開きますか？",
+                ):
+                    target_dir = Path(output_dir) if output_dir else Path(output_file).parent
+                    self._open_folder(target_dir)
+            else:
+                messagebox.showinfo("音声変換完了", "音声ファイルを出力しました。")
+        elif event_type == "audio_split_completed":
+            self.status_var.set("完了")
+            files = event.get("files", [])
+            total = len(files)
+            self.progress_var.set(100.0)
+            self.progress_label_var.set(f"進捗: {total} / {total or '?'}")
+            self._show_completion_dialog(files, event.get("output_dir", ""))
         elif event_type == "error":
             self.status_var.set("エラー")
             messagebox.showerror("エラー発生", event.get("message", "不明なエラーが発生しました。"))
@@ -401,7 +652,32 @@ class VideoSplitterApp(tk.Tk):
         for widget in (self.input_entry, self.output_entry):
             widget.configure(state=state)
         self.start_button.configure(state=tk.DISABLED if running else tk.NORMAL)
+        self.audio_button.configure(state=tk.DISABLED if running else tk.NORMAL)
+        self.audio_split_button.configure(state=tk.DISABLED if running else tk.NORMAL)
         self.cancel_button.configure(state=tk.NORMAL if running else tk.DISABLED)
+
+    def _safe_float(self, value: str, default: float) -> float:
+        try:
+            parsed = float(value)
+            return parsed if parsed > 0 else float(default)
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _persist_settings_with_defaults(
+        self, input_path: Path, output_dir: Path
+    ) -> None:
+        max_size = self._safe_float(
+            self.max_size_var.get(), self.settings.get("max_size_gb", 1.5)
+        )
+        max_duration = self._safe_float(
+            self.max_duration_var.get(), self.settings.get("max_duration_minutes", 50)
+        )
+        self._save_settings(
+            input_path=str(input_path),
+            output_dir=str(output_dir),
+            max_size_gb=max_size,
+            max_duration_minutes=max_duration,
+        )
 
     def _save_settings(
         self,

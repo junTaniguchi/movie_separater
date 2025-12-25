@@ -4,13 +4,13 @@ using System.Linq;
 
 namespace VideoSplitter.Core.Models;
 
-public sealed record SplitPlan(int PartCount, double SegmentLengthSeconds, double MaximumSizeBytes)
+public sealed record SplitPlan(string BaseName, int PartCount, double SegmentLengthSeconds, double MaximumSizeBytes)
 {
     public IReadOnlyList<SplitPart> Parts => Enumerable.Range(0, PartCount)
-        .Select(index => new SplitPart(index + 1, SegmentLengthSeconds))
+        .Select(index => new SplitPart(BaseName, index + 1, SegmentLengthSeconds))
         .ToArray();
 
-    public static SplitPlan FromProbe(ProbeResult probe, double maxGigabytes, double maxMinutes)
+    public static SplitPlan FromProbe(ProbeResult probe, double maxGigabytes, double maxMinutes, string? baseName = null)
     {
         if (maxGigabytes <= 0)
         {
@@ -35,11 +35,12 @@ public sealed record SplitPlan(int PartCount, double SegmentLengthSeconds, doubl
             segmentLength = probe.DurationSeconds;
         }
 
-        return new SplitPlan(requiredParts, segmentLength, maxSizeBytes);
+        var safeBaseName = string.IsNullOrWhiteSpace(baseName) ? "part" : baseName;
+        return new SplitPlan(safeBaseName, requiredParts, segmentLength, maxSizeBytes);
     }
 }
 
-public sealed record SplitPart(int Index, double NominalDurationSeconds)
+public sealed record SplitPart(string BaseName, int Index, double NominalDurationSeconds)
 {
-    public string FileName => $"part_{Index:00}.mp4";
+    public string FileName => $"{BaseName}_part_{Index:00}.mp4";
 }

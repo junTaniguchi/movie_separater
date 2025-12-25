@@ -10,6 +10,7 @@ from .ffprobe import probe
 
 
 ProgressCallback = Callable[[int, int], None]
+DEFAULT_AUDIO_BITRATE = "192k"
 
 
 def _check_cancel(cancel_event: Optional[threading.Event]) -> None:
@@ -32,7 +33,8 @@ def copy_split(
 
     out_dir = utils.ensure_directory(Path(out_dir))
     segment_time = max(segment_time, 1.0)
-    output_pattern = out_dir / "part_%02d.mp4"
+    base_name = input_path.stem
+    output_pattern = out_dir / f"{base_name}_part_%02d.mp4"
 
     cmd = [
         str(ffmpeg_path),
@@ -56,11 +58,64 @@ def copy_split(
 
     utils.run_command(cmd, logger, cancel_event=cancel_event)
 
-    created = sorted(out_dir.glob("part_*.mp4"))
+    created = sorted(out_dir.glob(f"{base_name}_part_*.mp4"))
     if not created:
         raise RuntimeError("ffmpeg did not produce any output parts.")
 
     logger.info("Created %d part(s) via copy split.", len(created))
+    return created
+
+
+def split_audio_file(
+    input_path: Path,
+    out_dir: Path,
+    segment_time: float,
+    ffmpeg_path: Path,
+    logger: logging.Logger,
+    *,
+    output_suffix: Optional[str] = None,
+    cancel_event: Optional[threading.Event] = None,
+) -> List[Path]:
+    """
+    Split an audio file into parts using stream copy.
+    """
+    _check_cancel(cancel_event)
+
+    out_dir = utils.ensure_directory(Path(out_dir))
+    segment_time = max(segment_time, 1.0)
+    base_name = input_path.stem
+    suffix = (output_suffix or input_path.suffix or ".mp3").lower()
+    if not suffix.startswith("."):
+        suffix = f".{suffix}"
+    output_pattern = out_dir / f"{base_name}_part_%02d{suffix}"
+
+    cmd = [
+        str(ffmpeg_path),
+        "-y",
+        "-v",
+        "error",
+        "-i",
+        str(input_path),
+        "-map",
+        "0:a?",
+        "-acodec",
+        "copy",
+        "-f",
+        "segment",
+        "-reset_timestamps",
+        "1",
+        "-segment_time",
+        f"{segment_time:.3f}",
+        str(output_pattern),
+    ]
+
+    utils.run_command(cmd, logger, cancel_event=cancel_event)
+
+    created = sorted(out_dir.glob(f"{base_name}_part_*{suffix}"))
+    if not created:
+        raise RuntimeError("ffmpeg did not produce any output parts.")
+
+    logger.info("Created %d audio part(s) via copy split.", len(created))
     return created
 
 
@@ -291,3 +346,44 @@ def reencode_oversize(
             progress_callback(index, total)
 
     return final_files
+
+
+def extract_audio(
+    input_path: Path,
+    output_path: Path,
+    ffmpeg_path: Path,
+    logger: logging.Logger,
+    *,
+    audio_bitrate: str = DEFAULT_AUDIO_BITRATE,
+    cancel_event: Optional[threading.Event] = None,
+) -> Path:
+    """
+    Extract audio track from a video file into a standalone MP3.
+    """
+    _check_cancel(cancel_event)
+    utils.ensure_directory(output_path.parent)
+
+    tmp_output = output_path.with_suffix(output_path.suffix + ".tmp")
+    tmp_output.unlink(missing_ok=True)
+
+    cmd = [
+        str(ffmpeg_path),
+        "-y",
+        "-i",
+        str(input_path),
+        "-vn",
+        "-acodec",
+        "libmp3lame",
+        "-b:a",
+        audio_bitrate,
+        str(tmp_output),
+    ]
+
+    utils.run_command(cmd, logger, cancel_event=cancel_event)
+
+    if not tmp_output.exists():
+        raise RuntimeError("音声ファイルの生成に失敗しました。")
+
+    tmp_output.replace(output_path)
+    logger.info("Extracted audio to %s", output_path)
+    return output_path

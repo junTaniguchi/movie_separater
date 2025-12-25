@@ -30,7 +30,8 @@ public sealed class VideoSplitter
         CancellationToken cancellationToken)
     {
         var probe = await _ffprobeClient.GetInfoAsync(inputFile, cancellationToken).ConfigureAwait(false);
-        return SplitPlan.FromProbe(probe, maxGigabytes, maxMinutes);
+        var baseName = Path.GetFileNameWithoutExtension(inputFile);
+        return SplitPlan.FromProbe(probe, maxGigabytes, maxMinutes, baseName);
     }
 
     public async Task<IReadOnlyList<string>> SplitAsync(
@@ -53,14 +54,14 @@ public sealed class VideoSplitter
         var segmentSeconds = Math.Max(1, plan.SegmentLengthSeconds);
         var segmentTimeArg = segmentSeconds.ToString(CultureInfo.InvariantCulture);
 
-        var patternPath = Path.Combine(outputDirectory, "part_%02d.mp4");
+        var patternPath = Path.Combine(outputDirectory, $"{plan.BaseName}_part_%02d.mp4");
         if (!overwrite)
         {
             EnsureNoOverwrite(plan, outputDirectory);
         }
         else
         {
-            CleanupExistingParts(outputDirectory);
+            CleanupExistingParts(outputDirectory, plan.BaseName);
         }
 
         progress?.Report(new SplitProgress(SplitPhase.CopySplitting, 0, plan.PartCount, "コピー分割中..."));
@@ -69,7 +70,7 @@ public sealed class VideoSplitter
             Path.GetDirectoryName(inputFile) ?? Environment.CurrentDirectory,
             cancellationToken).ConfigureAwait(false);
 
-        var actualParts = Directory.EnumerateFiles(outputDirectory, "part_*.mp4")
+        var actualParts = Directory.EnumerateFiles(outputDirectory, $"{plan.BaseName}_part_*.mp4")
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -104,9 +105,9 @@ public sealed class VideoSplitter
         }
     }
 
-    private void CleanupExistingParts(string outputDirectory)
+    private void CleanupExistingParts(string outputDirectory, string baseName)
     {
-        foreach (var file in Directory.EnumerateFiles(outputDirectory, "part_*.mp4"))
+        foreach (var file in Directory.EnumerateFiles(outputDirectory, $"{baseName}_part_*.mp4"))
         {
             try
             {
