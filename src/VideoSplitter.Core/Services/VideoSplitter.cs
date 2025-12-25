@@ -34,6 +34,60 @@ public sealed class VideoSplitter
         return SplitPlan.FromProbe(probe, maxGigabytes, maxMinutes, baseName);
     }
 
+    public async Task<string> ExtractAudioAsync(
+        string inputFile,
+        string outputDirectory,
+        bool overwrite,
+        IProgress<SplitProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(inputFile))
+        {
+            throw new ArgumentNullException(nameof(inputFile));
+        }
+
+        if (!File.Exists(inputFile))
+        {
+            throw new FileNotFoundException("入力ファイルが見つかりません。", inputFile);
+        }
+
+        Directory.CreateDirectory(outputDirectory);
+        var baseName = Path.GetFileNameWithoutExtension(inputFile);
+        var outputPath = Path.Combine(outputDirectory, $"{baseName}.mp3");
+
+        if (File.Exists(outputPath))
+        {
+            if (!overwrite)
+            {
+                throw new IOException($"出力ファイル {outputPath} が既に存在します");
+            }
+
+            try
+            {
+                File.Delete(outputPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"既存の音声ファイル削除に失敗しました: {ex.Message}");
+            }
+        }
+
+        progress?.Report(new SplitProgress(SplitPhase.AudioExtract, 0, 1, "音声抽出を準備中..."));
+
+        var location = await _locator.LocateAsync(cancellationToken).ConfigureAwait(false);
+        var arguments = $"-y -v error -i \"{inputFile}\" -vn -acodec libmp3lame -b:a 192k \"{outputPath}\"";
+        await RunFfmpegAsync(location.FfmpegPath, arguments, Path.GetDirectoryName(inputFile) ?? Environment.CurrentDirectory, cancellationToken).ConfigureAwait(false);
+
+        progress?.Report(new SplitProgress(SplitPhase.Completed, 1, 1, "音声抽出が完了しました"));
+
+        if (!File.Exists(outputPath))
+        {
+            throw new InvalidOperationException("音声ファイルの出力に失敗しました。");
+        }
+
+        return outputPath;
+    }
+
     public async Task<IReadOnlyList<string>> SplitAsync(
         string inputFile,
         string outputDirectory,

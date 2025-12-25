@@ -35,6 +35,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         Logs = new ObservableCollection<string>();
         StartCommand = new AsyncRelayCommand(StartAsync, CanStart);
+        ExtractAudioCommand = new AsyncRelayCommand(ExtractAudioAsync, CanExtractAudio);
         CancelCommand = new RelayCommand(_ => Cancel(), _ => IsBusy);
 
         _logger.AddSink(entry =>
@@ -65,6 +66,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public AsyncRelayCommand StartCommand { get; }
 
+    public AsyncRelayCommand ExtractAudioCommand { get; }
+
     public RelayCommand CancelCommand { get; }
 
     public string? InputFilePath
@@ -75,6 +78,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _inputFilePath, value))
             {
                 StartCommand.RaiseCanExecuteChanged();
+                ExtractAudioCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -87,6 +91,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _outputDirectory, value))
             {
                 StartCommand.RaiseCanExecuteChanged();
+                ExtractAudioCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -111,6 +116,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _isBusy, value))
             {
                 StartCommand.RaiseCanExecuteChanged();
+                ExtractAudioCommand.RaiseCanExecuteChanged();
                 CancelCommand.RaiseCanExecuteChanged();
             }
         }
@@ -136,6 +142,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public Func<SplitPlan, Task<bool>>? OverwriteConfirmationHandler { get; set; }
 
+    public Func<string, Task<bool>>? AudioOverwriteConfirmationHandler { get; set; }
+
     public Func<string, Task>? OpenFolderHandler { get; set; }
 
     public async Task OpenOutputFolderAsync()
@@ -147,6 +155,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private bool CanStart() => !IsBusy && !string.IsNullOrWhiteSpace(InputFilePath) && Directory.Exists(Path.GetDirectoryName(InputFilePath!) ?? string.Empty);
+
+    private bool CanExtractAudio() => CanStart();
 
     private async Task StartAsync()
     {
@@ -213,6 +223,75 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             _logger.Error("分割処理でエラーが発生しました", ex);
+            StatusMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+            IsIndeterminate = false;
+            _cancellationTokenSource = null;
+        }
+    }
+
+    private async Task ExtractAudioAsync()
+    {
+        if (string.IsNullOrWhiteSpace(InputFilePath))
+        {
+            return;
+        }
+
+        if (!File.Exists(InputFilePath))
+        {
+            _logger.Error($"入力ファイルが見つかりません: {InputFilePath}");
+            return;
+        }
+
+        Directory.CreateDirectory(OutputDirectory);
+        var outputPath = Path.Combine(OutputDirectory, Path.GetFileNameWithoutExtension(InputFilePath) + ".mp3");
+        if (File.Exists(outputPath) && AudioOverwriteConfirmationHandler != null)
+        {
+            var shouldContinue = await AudioOverwriteConfirmationHandler(outputPath).ConfigureAwait(false);
+            if (!shouldContinue)
+            {
+                _logger.Info("ユーザーによりキャンセルされました (音声上書き確認)");
+                return;
+            }
+        }
+
+        var cts = new CancellationTokenSource();
+        _cancellationTokenSource = cts;
+        IsBusy = true;
+        IsIndeterminate = true;
+        StatusMessage = "音声抽出中...";
+
+        try
+        {
+            var progress = new Progress<SplitProgress>(p =>
+            {
+                StatusMessage = p.Message ?? string.Empty;
+                if (p.TotalParts > 0)
+                {
+                    ProgressValue = p.Percentage;
+                    IsIndeterminate = false;
+                }
+            });
+
+            var resultPath = await _splitter.ExtractAudioAsync(InputFilePath, OutputDirectory, overwrite: true, progress, cts.Token).ConfigureAwait(false);
+
+            StatusMessage = "音声抽出が完了しました";
+            ProgressValue = 100;
+            IsIndeterminate = false;
+
+            _logger.Info($"音声出力ファイル: {Path.GetFileName(resultPath)}");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.Warn("ユーザーによりキャンセルされました (音声抽出)");
+            StatusMessage = "キャンセルしました";
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("音声抽出でエラーが発生しました", ex);
             StatusMessage = ex.Message;
         }
         finally

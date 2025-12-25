@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         _viewModel = new MainWindowViewModel(splitter)
         {
             OverwriteConfirmationHandler = ConfirmOverwriteAsync,
+            AudioOverwriteConfirmationHandler = ConfirmAudioOverwriteAsync,
             OpenFolderHandler = OpenFolderAsync
         };
 
@@ -115,6 +116,19 @@ public partial class MainWindow : Window
         }
 
         return Task.CompletedTask;
+    }
+
+    private Task<bool> ConfirmAudioOverwriteAsync(string outputPath)
+    {
+        if (!File.Exists(outputPath))
+        {
+            return Task.FromResult(true);
+        }
+
+        var fileName = Path.GetFileName(outputPath);
+        var message = $"{fileName} が既に存在します。上書きしますか？";
+        var result = WpfMessageBox.Show(this, message, "上書き確認", WpfMessageBoxButton.YesNo, WpfMessageBoxImage.Question, WpfMessageBoxResult.No);
+        return Task.FromResult(result == WpfMessageBoxResult.Yes);
     }
 
     private void BrowseInput_Click(object sender, RoutedEventArgs e)

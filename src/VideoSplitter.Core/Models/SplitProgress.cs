@@ -5,6 +5,7 @@ public enum SplitPhase
     Preparing,
     CopySplitting,
     Reencoding,
+    AudioExtract,
     Completed
 }
 
