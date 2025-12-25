@@ -65,7 +65,7 @@
         <TextBlock Grid.Row="5" Text="動画の分割に加えて、動画から音声のみ (MP3) への変換も行えます。" Margin="0,12,0,0" Foreground="Gray" />
 
         <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Left">
-            <Button Content="実行" Width="120" Command="{Binding StartCommand}" />
+            <Button Content="動画分割" Width="120" Command="{Binding StartCommand}" />
             <Button Content="音声のみ抽出" Width="140" Command="{Binding ExtractAudioCommand}" Margin="8,0,0,0" />
             <Button Content="キャンセル" Width="120" Command="{Binding CancelCommand}" Margin="8,0,0,0" />
             <Button Content="フォルダーを開く" Width="140" Click="OpenFolder_Click" Margin="8,0,0,0" />

@@ -150,6 +150,8 @@ def run_command(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding=text_encoding or None,
+        errors="replace",
         cwd=str(cwd) if cwd else None,
         bufsize=1,
     ) as proc:
