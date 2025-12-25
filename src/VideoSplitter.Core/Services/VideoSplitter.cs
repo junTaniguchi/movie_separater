@@ -54,14 +54,26 @@ public sealed class VideoSplitter
         var segmentSeconds = Math.Max(1, plan.SegmentLengthSeconds);
         var segmentTimeArg = segmentSeconds.ToString(CultureInfo.InvariantCulture);
 
-        var patternPath = Path.Combine(outputDirectory, $"{plan.BaseName}_part_%02d.mp4");
+        var outputBaseName = Path.GetFileNameWithoutExtension(inputFile);
+        if (string.IsNullOrWhiteSpace(outputBaseName))
+        {
+            outputBaseName = "output";
+        }
+
+        var outputExtension = Path.GetExtension(inputFile);
+        if (string.IsNullOrEmpty(outputExtension))
+        {
+            outputExtension = ".mp4";
+        }
+
+        var patternPath = Path.Combine(outputDirectory, $"{outputBaseName}_%02d{outputExtension}");
         if (!overwrite)
         {
-            EnsureNoOverwrite(plan, outputDirectory);
+            EnsureNoOverwrite(plan, outputDirectory, outputBaseName, outputExtension);
         }
         else
         {
-            CleanupExistingParts(outputDirectory, plan.BaseName);
+            CleanupExistingParts(outputDirectory, outputBaseName, outputExtension);
         }
 
         progress?.Report(new SplitProgress(SplitPhase.CopySplitting, 0, plan.PartCount, "コピー分割中..."));
@@ -70,7 +82,8 @@ public sealed class VideoSplitter
             Path.GetDirectoryName(inputFile) ?? Environment.CurrentDirectory,
             cancellationToken).ConfigureAwait(false);
 
-        var actualParts = Directory.EnumerateFiles(outputDirectory, $"{plan.BaseName}_part_*.mp4")
+        var searchPattern = $"{outputBaseName}_*{outputExtension}";
+        var actualParts = Directory.EnumerateFiles(outputDirectory, searchPattern)
             .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -93,11 +106,12 @@ public sealed class VideoSplitter
         return actualParts;
     }
 
-    private void EnsureNoOverwrite(SplitPlan plan, string outputDirectory)
+    private void EnsureNoOverwrite(SplitPlan plan, string outputDirectory, string outputBaseName, string outputExtension)
     {
         foreach (var part in plan.Parts)
         {
-            var path = Path.Combine(outputDirectory, part.FileName);
+            var fileName = part.GetFileName(outputBaseName, outputExtension);
+            var path = Path.Combine(outputDirectory, fileName);
             if (File.Exists(path))
             {
                 throw new IOException($"出力ファイル {path} が既に存在します");
@@ -105,9 +119,10 @@ public sealed class VideoSplitter
         }
     }
 
-    private void CleanupExistingParts(string outputDirectory, string baseName)
+    private void CleanupExistingParts(string outputDirectory, string outputBaseName, string outputExtension)
     {
-        foreach (var file in Directory.EnumerateFiles(outputDirectory, $"{baseName}_part_*.mp4"))
+        var searchPattern = $"{outputBaseName}_*{outputExtension}";
+        foreach (var file in Directory.EnumerateFiles(outputDirectory, searchPattern))
         {
             try
             {

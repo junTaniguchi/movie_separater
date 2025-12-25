@@ -68,8 +68,26 @@ public partial class MainWindow : Window
 
     private async Task<bool> ConfirmOverwriteAsync(SplitPlan plan)
     {
+        var inputFilePath = _viewModel.InputFilePath;
+        if (string.IsNullOrWhiteSpace(inputFilePath))
+        {
+            return true;
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(inputFilePath);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = "output";
+        }
+
+        var extension = Path.GetExtension(inputFilePath);
+        if (string.IsNullOrEmpty(extension))
+        {
+            extension = ".mp4";
+        }
+
         var existing = plan.Parts
-            .Select(p => Path.Combine(_viewModel.OutputDirectory, p.FileName))
+            .Select(p => Path.Combine(_viewModel.OutputDirectory, p.GetFileName(baseName, extension)))
             .Where(File.Exists)
             .ToList();
 

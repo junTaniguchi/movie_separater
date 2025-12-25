@@ -42,5 +42,26 @@ public sealed record SplitPlan(string BaseName, int PartCount, double SegmentLen
 
 public sealed record SplitPart(string BaseName, int Index, double NominalDurationSeconds)
 {
+<<<<<<< HEAD
     public string FileName => $"{BaseName}_part_{Index:00}.mp4";
+=======
+    public string GetFileName(string baseName, string extension)
+    {
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            throw new ArgumentException("Base name must not be null or whitespace.", nameof(baseName));
+        }
+
+        if (string.IsNullOrEmpty(extension))
+        {
+            extension = ".mp4";
+        }
+        else if (!extension.StartsWith('.'))
+        {
+            extension = "." + extension;
+        }
+
+        return $"{baseName}_{Index - 1:00}{extension}";
+    }
+>>>>>>> 6d95b371f18f26aeb47d9d6716fa88074f426bea
 }
