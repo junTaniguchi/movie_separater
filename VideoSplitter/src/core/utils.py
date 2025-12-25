@@ -156,8 +156,11 @@ def run_command(
         bufsize=1,
     ) as proc:
         assert proc.stdout is not None
+        output_lines = []
         for line in proc.stdout:
-            logger.log(stream_level, line.rstrip())
+            text_line = line.rstrip()
+            output_lines.append(text_line)
+            logger.log(stream_level, text_line)
             if cancel_event and cancel_event.is_set():
                 logger.warning("Cancellation requested; terminating process.")
                 proc.terminate()
@@ -168,5 +171,6 @@ def run_command(
                 raise OperationCancelled("Process was cancelled by user.")
         returncode = proc.wait()
         if returncode != 0:
-            raise subprocess.CalledProcessError(returncode, args)
+            joined = "\n".join(output_lines)
+            raise subprocess.CalledProcessError(returncode, args, output=joined)
     return None

@@ -363,7 +363,7 @@ def extract_audio(
     _check_cancel(cancel_event)
     utils.ensure_directory(output_path.parent)
 
-    tmp_output = output_path.with_suffix(output_path.suffix + ".tmp")
+    tmp_output = output_path.with_suffix(".tmp.mp3")
     tmp_output.unlink(missing_ok=True)
 
     cmd = [
@@ -376,6 +376,8 @@ def extract_audio(
         "libmp3lame",
         "-b:a",
         audio_bitrate,
+        "-f",
+        "mp3",
         str(tmp_output),
     ]
 
